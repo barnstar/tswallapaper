@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tailscale Wallpaper Background</title>
+    <style>
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            height: 100%;
+        }
+
+        canvas {
+            display: block;
+            background-color: #eee;
+        }
+    </style>
+    <script>
+        // TODO: This should be webGL shader :)
+        const numx = 200;
+        const numy = 200;
+        const rad = 4;
+        const transitionFrames = 10;
+        const fps = 20; //rookie numbers... we need to pump those numbers up
+        const redrawTime = 1000/fps;
+
+        var state = arrayOf({ x: numx, y: numy }, 0);
+        var inLogo = arrayOf({ x: numx, y: numy }, false);
+        var lastState = arrayOf({ x: numx, y: numy }, 0);
+        var transitionStep = 0;
+
+
+        const dark = "171717";
+        const medium = "333333";
+        const light = "bbbbbb";
+
+        const keyFrames = {
+            darkToMed: hexGradient(dark, medium, transitionFrames),
+            darkToLight: hexGradient(dark, light, transitionFrames),
+            lightToDark: hexGradient(light, dark, transitionFrames),
+            medToDark: hexGradient(medium, dark, transitionFrames),
+            medToLight: hexGradient(medium, light, transitionFrames),
+            lightToMed: hexGradient(light, medium, transitionFrames),
+        };
+
+        // Rotated 90 degrees because y,x not x,y
+        const logoMask = [[false, true, false], 
+                          [false, true, true],
+                          [false, true, false]];
+
+        // Returns true if the mask overlayed onto the onto array at the at position is a perfect match
+        function overlayMask(mask, onto, at) {
+            for (let y = 0; y < mask.length; y++) {
+                for (let x = 0; x < mask[y].length; x++) {
+                    if (mask[y][x] != onto[y + at.y][x + at.x]) return false;
+                }
+            }
+            return true;
+        };
+
+        // Applies the mask to the onto array at the at position
+        function applyMask(mask, onto, at) {
+            for (let y = 0; y < mask.length; y++) {
+                for (let x = 0; x < mask[y].length; x++) {
+                    onto[y + at.x][x + at.y] = mask[x][y] ? 2 : 0;
+                }
+            }
+        };
+
+        // Returns a 2D array of size filled with val
+        function arrayOf(size, val) {
+            let retVal = [];
+            for (let y = 0; y < size.y; y++) {
+                let newRow = [];
+                for (let x = 0; x < size.x; x++) {
+                    newRow.push(val);
+                }
+                retVal.push(newRow);
+            }
+            return retVal;
+        };
+
+        // Sets the elements in the array 1 with a probability of chance
+        function fillRandom(arr, chance) {
+            for (let y = 0; y < arr.length; y++) {
+                let rowlen = arr[y].length;
+                for (let x = 0; x < rowlen ; x++) {
+                    arr[y][x] = Math.random() < chance ? 1 : 0;
+                }
+            }
+        };
+
+        function draw() {
+            let canvas = document.getElementById('ts');
+
+            const ctx = canvas.getContext("2d");
+            ctx.fillStyle = "black";
+            ctx.fillRect(0, 0, canvas.offsetWidth, canvas.offsetHeight);
+
+            for (let y = 0; y < numy; y++) {
+                for (let x = 0; x < numx; x++) {
+                    const px = 2 * rad + 3 * rad * x;
+                    const py = 2 * rad + 3 * rad * y;
+                    ctx.beginPath();
+                    ctx.arc(px, py, rad, 0, Math.PI * 2);
+
+
+                    if (state[y][x] == 1 && lastState[y][x] == 1) {
+                        ctx.fillStyle = "#333333";
+                    } else if (state[y][x] == 0 && lastState[y][x] == 0) {
+                        ctx.fillStyle = "#171717";
+                    } else if (state[y][x] == 2 && lastState[y][x] == 2) {
+                        ctx.fillStyle = "#bbbbbb";
+                    } else if (state[y][x] == 2 && lastState[y][x] == 0) {
+                        ctx.fillStyle = keyFrames.darkToLight[transitionStep];
+                    } else if (state[y][x] == 0 && lastState[y][x] == 2) {
+                        ctx.fillStyle = keyFrames.lightToDark[transitionStep];
+                    } else if (state[y][x] == 2 && lastState[y][x] == 1) {
+                        ctx.fillStyle = keyFrames.medToLight[transitionStep];
+                    } else if (state[y][x] == 0 && lastState[y][x] == 1) {
+                        ctx.fillStyle = keyFrames.medToDark[transitionStep];
+                    } else if (state[y][x] == 1 && lastState[y][x] == 2) {
+                        ctx.fillStyle = keyFrames.lightToMed[transitionStep];
+                    } else if (state[y][x] == 1 && lastState[y][x] == 0) {
+                        ctx.fillStyle = keyFrames.darkToMed[transitionStep];
+                    } else {
+                        ctx.fillStyle = "#FF0000";
+                    }
+                    ctx.fill();
+                }
+
+            }
+        }
+
+        function tailscalify() {
+            lastState = state;
+
+            let newState = [];
+            let newInLogo = [];
+            for (var y = 0; y < numy; y++) {
+                let newRow = [];
+                let inLogoRow = [];
+                for (let x = 0; x < numx; x++) {
+                    if (Math.random() < 0.05) {
+                        newRow.push(state[y][x] == 0 ? 1 : 0);
+                    } else {
+                        newRow.push(state[y][x] == 0 ? 0 : 1);
+                    }
+                    inLogoRow.push(false);
+                }
+                newInLogo.push(newRow);
+                newState.push(newRow);
+            }
+            inLogo = newInLogo;
+            for (let y = 0; y < numy - 3; y++) {
+                for (let x = 0; x < numx - 3; x++) {
+                    if (inLogo[y][x]) {
+                        continue;
+                    }
+                    if (overlayMask(logoMask, newState, { x, y })) {
+                        for (let dy = 0; dy < 3; dy++) {
+                            for (let dx = 0; dx < 3; dx++) {
+                                inLogo[y + dy][x + dx] = true;
+                            }
+                        }
+                        applyMask(logoMask, newState, { x, y });
+                    }
+                }
+            }
+            state = newState;
+        };
+
+        function hexGradient(colorFrom, colorTo, steps) {
+            let palette = []
+            for (let i = 0; i < steps; i++) {
+                let ratio = i / (steps - 1);
+                const hex = function (x) {
+                    x = x.toString(16);
+                    return (x.length == 1) ? '0' + x : x;
+                };
+
+                let r = Math.ceil(parseInt(colorTo.substring(0, 2), 16) * ratio + parseInt(colorFrom.substring(0, 2), 16) * (1 - ratio)),
+                    g = Math.ceil(parseInt(colorTo.substring(2, 4), 16) * ratio + parseInt(colorFrom.substring(2, 4), 16) * (1 - ratio)),
+                    b = Math.ceil(parseInt(colorTo.substring(4, 6), 16) * ratio + parseInt(colorFrom.substring(4, 6), 16) * (1 - ratio));
+
+                palette.push("#" + hex(r) + hex(g) + hex(b));
+            }
+            return palette;
+        }
+
+        function updateStateAndRedraw() {
+            transitionStep++;
+            if (transitionStep == transitionFrames) {
+                tailscalify();
+                transitionStep = 0;
+            }
+            draw();
+        }
+
+        document.addEventListener("DOMContentLoaded", function () {
+            let canvas = document.getElementById('ts');
+            // Set canvas width and height to fill the entire page
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            draw();
+
+            window.setInterval(updateStateAndRedraw, redrawTime);
+        });
+
+        window.addEventListener("resize", function () {
+            let canvas = document.getElementById('ts');
+            // Set canvas width and height to fill the entire page
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            draw();
+        });
+
+        fillRandom(state, 0.25);
+        tailscalify();
+
+    </script>
+
+<body>
+    <canvas width="100%" height="100%" id="ts"></canvas>
+</body>
+
+</html>
