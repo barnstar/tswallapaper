@@ -26,7 +26,7 @@
         const rad = 4;
         const transitionFrames = 10;
         const fps = 20; //rookie numbers... we need to pump those numbers up
-        const redrawTime = 1000/fps;
+        const redrawTime = 1000 / fps;
 
         var state = arrayOf({ x: numx, y: numy }, 0);
         var inLogo = arrayOf({ x: numx, y: numy }, false);
@@ -48,9 +48,9 @@
         };
 
         // Rotated 90 degrees because y,x not x,y
-        const logoMask = [[false, true, false], 
-                          [false, true, true],
-                          [false, true, false]];
+        const logoMask = [[false, true, false],
+        [false, true, true],
+        [false, true, false]];
 
         // Returns true if the mask overlayed onto the onto array at the at position is a perfect match
         function overlayMask(mask, onto, at) {
@@ -88,7 +88,7 @@
         function fillRandom(arr, chance) {
             for (let y = 0; y < arr.length; y++) {
                 let rowlen = arr[y].length;
-                for (let x = 0; x < rowlen ; x++) {
+                for (let x = 0; x < rowlen; x++) {
                     arr[y][x] = Math.random() < chance ? 1 : 0;
                 }
             }
@@ -110,11 +110,11 @@
 
 
                     if (state[y][x] == 1 && lastState[y][x] == 1) {
-                        ctx.fillStyle = "#333333";
+                        ctx.fillStyle = "#"+medium;
                     } else if (state[y][x] == 0 && lastState[y][x] == 0) {
-                        ctx.fillStyle = "#171717";
+                        ctx.fillStyle = "#"+dark;
                     } else if (state[y][x] == 2 && lastState[y][x] == 2) {
-                        ctx.fillStyle = "#bbbbbb";
+                        ctx.fillStyle = "#"+light;
                     } else if (state[y][x] == 2 && lastState[y][x] == 0) {
                         ctx.fillStyle = keyFrames.darkToLight[transitionStep];
                     } else if (state[y][x] == 0 && lastState[y][x] == 2) {
@@ -176,17 +176,25 @@
 
         function hexGradient(colorFrom, colorTo, steps) {
             let palette = []
+            let to = {
+                r: parseInt(colorTo.substring(0, 2), 16),
+                g: parseInt(colorTo.substring(2, 4), 16),
+                b: parseInt(colorTo.substring(4, 6), 16)
+            }
+            let from = {
+                r: parseInt(colorFrom.substring(0, 2), 16),
+                g: parseInt(colorFrom.substring(2, 4), 16),
+                b: parseInt(colorFrom.substring(4, 6), 16)
+            }
+            const hex = function (x) {
+                x = x.toString(16);
+                return (x.length == 1) ? '0' + x : x;
+            };
             for (let i = 0; i < steps; i++) {
                 let ratio = i / (steps - 1);
-                const hex = function (x) {
-                    x = x.toString(16);
-                    return (x.length == 1) ? '0' + x : x;
-                };
-
-                let r = Math.ceil(parseInt(colorTo.substring(0, 2), 16) * ratio + parseInt(colorFrom.substring(0, 2), 16) * (1 - ratio)),
-                    g = Math.ceil(parseInt(colorTo.substring(2, 4), 16) * ratio + parseInt(colorFrom.substring(2, 4), 16) * (1 - ratio)),
-                    b = Math.ceil(parseInt(colorTo.substring(4, 6), 16) * ratio + parseInt(colorFrom.substring(4, 6), 16) * (1 - ratio));
-
+                let r = Math.ceil(to.r * ratio + from.r * (1 - ratio));
+                let g = Math.ceil(to.g * ratio + from.g * (1 - ratio));
+                let b = Math.ceil(to.b * ratio + from.b * (1 - ratio));
                 palette.push("#" + hex(r) + hex(g) + hex(b));
             }
             return palette;
